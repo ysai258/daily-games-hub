@@ -1,6 +1,6 @@
 'use client';
 
-import { useId, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { getGame, type GameId } from '@/shared/games';
 import { parseShareText } from '@/shared/parse';
 import { resultLabel } from '@/shared/scoring';
@@ -25,13 +25,23 @@ export function PasteResult({
   today,
   recorded,
   onSaved,
+  initialText = '',
 }: {
   today: string;
   recorded: ReadonlySet<GameId>;
   onSaved: () => void;
+  /** Text shared into the app from Android's share sheet, awaiting review. */
+  initialText?: string;
 }) {
   const { player } = usePlayer();
-  const [text, setText] = useState('');
+  const [text, setText] = useState(initialText);
+  const sectionRef = useRef<HTMLElement>(null);
+
+  // A shared result arrives with the page: bring the box into view so the player
+  // sees the preview and the Save button without scrolling past four game cards.
+  useEffect(() => {
+    if (initialText) sectionRef.current?.scrollIntoView({ block: 'center' });
+  }, [initialText]);
   const [status, setStatus] = useState<Status>({ kind: 'idle' });
   const inputId = useId();
   const canReadClipboard = typeof navigator !== 'undefined' && typeof navigator.clipboard?.readText === 'function';
@@ -74,13 +84,19 @@ export function PasteResult({
   }
 
   return (
-    <section className="card paste" aria-labelledby={`${inputId}-title`}>
+    <section ref={sectionRef} className="card paste" aria-labelledby={`${inputId}-title`}>
       <h2 id={`${inputId}-title`} className="section-title">
         📋 Add a result
       </h2>
-      <p className="muted small">
-        Finish a game, tap its <strong>Share</strong> or <strong>Copy</strong> button, then paste it here.
-      </p>
+      {initialText && text === initialText ? (
+        <p className="muted small">
+          Shared from another app. Check what the hub read below, then tap <strong>Save result</strong>.
+        </p>
+      ) : (
+        <p className="muted small">
+          Finish a game, tap its <strong>Share</strong> or <strong>Copy</strong> button, then paste it here.
+        </p>
+      )}
 
       <label htmlFor={inputId} className="visually-hidden">
         Game share text

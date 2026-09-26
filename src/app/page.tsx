@@ -11,6 +11,7 @@ import { PasteResult } from '@/client/components/PasteResult';
 import { useApi, useIstClock, usePlayer } from '@/client/hooks';
 import { readPending } from '@/client/pending';
 import { buildDayShareText, shareText } from '@/client/share';
+import { readSharedFromHash } from '@/shared/share-target';
 
 export default function Dashboard() {
   const { player } = usePlayer();
@@ -18,6 +19,17 @@ export default function Dashboard() {
   const day = useApi(() => api.playerDay(player.id, today), [player.id, today]);
   const [pendingCount, setPendingCount] = useState(0);
   const [shareNote, setShareNote] = useState<string | null>(null);
+  const [sharedText, setSharedText] = useState('');
+
+  // Arriving from Android's share sheet: /share redirected here with the text in the
+  // URL fragment. Take it once, then clean the address bar so a reload or a
+  // bookmark doesn't bring the same text back.
+  useEffect(() => {
+    const shared = readSharedFromHash(window.location.hash);
+    if (shared === null) return;
+    setSharedText(shared);
+    window.history.replaceState(window.history.state, '', window.location.pathname + window.location.search);
+  }, []);
 
   useEffect(() => {
     setPendingCount(readPending().length);
@@ -76,7 +88,15 @@ export default function Dashboard() {
         ))}
       </section>
 
-      {done < ENABLED_GAMES.length && <PasteResult today={today} recorded={recorded} onSaved={day.reload} />}
+      {(done < ENABLED_GAMES.length || sharedText) && (
+        <PasteResult
+          key={sharedText}
+          today={today}
+          recorded={recorded}
+          onSaved={day.reload}
+          initialText={sharedText}
+        />
+      )}
 
       <div className="row">
         <Link href="/leaderboard" className="button grow">

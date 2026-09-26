@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Full-bleed background so the maskable variant fills any launcher shape. -->
+  <rect width="512" height="512" fill="#d9480f"/>
+  <!-- A 2x2 result grid, drawn inside the central 60% so no mask shape clips it. -->
+  <g transform="translate(166 166)">
+    <rect x="0"   y="0"   width="80" height="80" rx="14" fill="#fff4ec"/>
+    <rect x="100" y="0"   width="80" height="80" rx="14" fill="#fff4ec"/>
+    <rect x="0"   y="100" width="80" height="80" rx="14" fill="#fff4ec"/>
+    <rect x="100" y="100" width="80" height="80" rx="14" fill="#2f9e44"/>
+  </g>
+</svg>

@@ -54,6 +54,27 @@ Game sites (external, untouched) ──share text──▶ player's clipboard �
   - **Friends view:** sorted by games played, then total normalized score. The Score column averages over all 4 games, so unplayed counts as 0%.
   - **Per-game boards:** use each game's own result. Evarra's are ranked by its points.
 
+## Share straight from a game (Android)
+
+Once someone installs the hub from Chrome on Android (menu ⋮ → **Install app**), the hub appears in the phone's
+share sheet next to WhatsApp. Sharing a result sends it into the hub's paste box, ready to review and save.
+
+```
+Game's Share button ─▶ Android share sheet ─▶ "Daily Games"
+  ─▶ POST /share (title, text, url)        src/app/share/route.ts
+  ─▶ 303 to /#shared=<text>                src/shared/share-target.ts
+  ─▶ dashboard prefills the paste box      src/app/page.tsx → PasteResult
+  ─▶ player taps Save result (same API, same rules as a manual paste)
+```
+
+- `src/app/manifest.ts` holds the `share_target`, installable icons, `id`, `scope` and `display: standalone`.
+- `public/sw.js` is a minimal service worker: no caching, plus an offline page when navigation fails. It never touches `/share` or `/api`.
+- `src/client/components/ServiceWorker.tsx` registers it, in production builds only.
+- `public/icons/` and `src/app/apple-icon.png` are generated from `scripts/icon-source.svg` by `scripts/icons.cjs`.
+- **Games that pass their link separately:** Absolute Cinema sends it as `url`, not inside `text`. The link is appended so the game is still detected.
+- **Where the text travels:** in the URL fragment, which is never sent to the server or logged. It is removed from the address bar as soon as it has been read.
+- **Where it works:** the share target works only in the **installed** app on Android (Chrome, and Chromium browsers such as Samsung Internet) and on ChromeOS. iPhone Safari does not support Web Share Target, so iPhone users keep copy and paste. That flow is unchanged.
+
 ## Database schema (`drizzle/0000_init.sql`)
 
 - **`players`**: `id uuid pk`, `name`, `created_at`, `updated_at`
@@ -137,4 +158,3 @@ Other commands: `npm test`, `npm run typecheck`, `npm run build`, `npm run check
   - Evarra is yours, so it could be first. It would need an iframe game page and a `PostMessageResultProvider` alongside the paste box.
 - **Optional bookmarklet.** A player could tap it on a game's page to read that game's own localStorage and send the result. It's legitimate because it runs on the game's page, with the player's consent. It's clunky on mobile, though.
 - Weekly or monthly standings, and streaks.
-- A proper PWA with an offline shell. Today there is only a manifest, so "Add to Home Screen" works.
