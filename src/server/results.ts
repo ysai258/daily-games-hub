@@ -1,5 +1,5 @@
 import { and, eq, sql } from 'drizzle-orm';
-import { addDays, istToday } from '@/shared/date';
+import { addDays, formatDayMonth, istToday } from '@/shared/date';
 import { getGame } from '@/shared/games';
 import { parseShareText } from '@/shared/parse';
 import type { ResultDto } from '@/shared/types';
@@ -23,9 +23,12 @@ export type SubmitOutcome =
 /**
  * Records a pasted share text.
  *
- * The date is the IST day of the paste. A client may name the day it pasted on, so a
- * result queued offline just before midnight still lands on the right day, but only
- * today or yesterday is accepted.
+ * The result is filed under the game's own date when its text states one (Aadu
+ * Gajala, Evarra, Pattukunte), else under the IST day of the paste (Absolute
+ * Cinema). That keeps a US friend's evening Evarra on the day of the star they
+ * actually played. The client may name the day it pasted on, so a result queued
+ * offline just before midnight still counts for that day. Either way only today's
+ * or yesterday's game is accepted.
  *
  * Policy: the first result for (player, game, day) wins. Every game locks a day once
  * it's finished, so a different second result can only be a replay or an edit.
@@ -33,12 +36,16 @@ export type SubmitOutcome =
  */
 export async function submitResult(db: Db, input: SubmitInput, now: Date = new Date()): Promise<SubmitOutcome> {
   const today = istToday(now);
-  const gameDate = input.gameDate ?? today;
-  if (gameDate > today) return { status: 400, error: "That date hasn't happened yet in IST." };
-  if (gameDate < addDays(today, -1)) return { status: 400, error: 'Results can only be added for today.' };
+  const pasteDate = input.gameDate ?? today;
+  if (pasteDate > today) return { status: 400, error: "That date hasn't happened yet in IST." };
+  if (pasteDate < addDays(today, -1)) return { status: 400, error: 'Results can only be added for today.' };
 
-  const parsed = parseShareText(input.text, gameDate);
+  const parsed = parseShareText(input.text, pasteDate);
   if (!parsed.ok) return { status: 422, error: parsed.error };
+  // parseShareText allows up to a day before the paste day; a queued paste from
+  // yesterday must not reach back two days.
+  const gameDate = parsed.result.gameDate;
+  if (gameDate < addDays(today, -1)) return { status: 422, error: 'Results can only be added for today or yesterday.' };
   const game = getGame(parsed.result.gameId);
   if (!game.enabled) return { status: 422, error: `${game.name} isn't part of the hub right now.` };
 
@@ -83,7 +90,7 @@ export async function submitResult(db: Db, input: SubmitInput, now: Date = new D
 
   return {
     status: 409,
-    error: `You already added ${game.name} for today (${existingDto.label}). Only the first result counts.`,
+    error: `You already added ${game.name} for ${gameDate === today ? 'today' : formatDayMonth(gameDate)} (${existingDto.label}). Only the first result counts.`,
     result: existingDto,
   };
 }

@@ -8,11 +8,22 @@ export type ParsedResult = {
   maxAttempts: number;
   /** The game's own points, for games that have them (Evarra). */
   points: number | null;
+  /**
+   * The day the result is filed under: the game's own date when its share text has
+   * one, otherwise the day it was pasted (Absolute Cinema).
+   */
+  gameDate: string;
 };
+
+/** What a game parser reads: the result, plus the game's own day if the text states one. */
+export type ParsedShare = Omit<ParsedResult, 'gameDate'> & { ownDate: string | null };
 
 export type ParseOutcome = { ok: true; result: ParsedResult } | { ok: false; error: string; gameId?: GameId };
 
-export type GameParser = (text: string, gameDate: string) => ParseOutcome;
+export type ParserOutcome = { ok: true; result: ParsedShare } | { ok: false; error: string; gameId?: GameId };
+
+/** `pasteDate` (IST) only helps resolve dates the text states partially, like "#27 SEP" with no year. */
+export type GameParser = (text: string, pasteDate: string) => ParserOutcome;
 
 export const MAX_ATTEMPTS = 5;
 
@@ -24,19 +35,19 @@ export const MAX_ATTEMPTS = 5;
 export function normalizeShareText(raw: string): string {
   return raw
     .replace(/\r\n?/g, '\n')
-    .replace(/[︎️​]/g, '')
-    .replace(/[‘’]/g, "'")
+    .replace(/[\uFE0E\uFE0F\u200B]/g, '')
+    .replace(/[\u2018\u2019]/g, "'")
     .split('\n')
     .map((line) => line.trim())
     .join('\n')
     .trim();
 }
 
-export function fail(gameId: GameId, error: string): ParseOutcome {
+export function fail(gameId: GameId, error: string): ParserOutcome {
   return { ok: false, error, gameId };
 }
 
-export function success(result: ParsedResult): ParseOutcome {
+export function success(result: ParsedShare): ParserOutcome {
   return { ok: true, result };
 }
 

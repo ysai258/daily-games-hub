@@ -5,8 +5,8 @@ import { MAX_ATTEMPTS, SCORE_MISMATCH, fail, rowMatchesScore, success, symbols, 
  * 🟥🟥🟩⬜⬜
  * 3 / 5            ← "0 / 5" for a loss
  *
- * The text carries no date or puzzle number, so the hub's own IST day is the only
- * date there is, and a Time Machine replay of an old day cannot be told apart.
+ * The text carries no date or puzzle number, so the result is filed under the day it
+ * was pasted, and a Time Machine replay of an old day cannot be told apart.
  */
 const ROW = /^[🟥🟩⬜]{5}$/u;
 const SCORE = /^([0-5])\s*\/\s*5$/;
@@ -23,5 +23,5 @@ export const parseAbsoluteCinema: GameParser = (text) => {
   if (!rowMatchesScore(symbols(row), { won, attempts }, { hit: '🟩', miss: ['🟥'], unused: '⬜' })) {
     return fail('absolute-cinema', SCORE_MISMATCH);
   }
-  return success({ gameId: 'absolute-cinema', won, attempts, maxAttempts: MAX_ATTEMPTS, points: null });
+  return success({ gameId: 'absolute-cinema', won, attempts, maxAttempts: MAX_ATTEMPTS, points: null, ownDate: null });
 };

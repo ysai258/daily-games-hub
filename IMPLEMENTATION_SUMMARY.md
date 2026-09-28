@@ -29,12 +29,12 @@ Game sites (external, untouched) ──share text──▶ player's clipboard �
 
 ## How each game is integrated
 
-| Game | How a result gets in | Game detected by | Date check |
+| Game | How a result gets in | Game detected by | Filed under |
 |---|---|---|---|
-| 🎬 Absolute Cinema | Pasted share text | `absolute-cinema.in` or "ABSOLUTE CINEMA" | None possible: the text has no date |
-| 🎵 Aadu Gajala | Pasted share text | `aadu-gajala.vercel.app` or `ఆడు గజాల ఆడు` | `#DD MON` must be today. `?date=` and "this song" replays are rejected. |
-| ⭐ Evarra? | Pasted share text | `ysai258.github.io/evarra` or `EVARRA?` | The full date must be today. Multiplayer results are rejected. |
-| 👗 Pattukunte Pattucheera | Pasted share text | `pattukunte-pattucheera.netlify.app` or its title | `Day N` must equal today's day number. "(Time Travelled)" is rejected. |
+| 🎬 Absolute Cinema | Pasted share text | `absolute-cinema.in` or "ABSOLUTE CINEMA" | The IST day of the paste (the text has no date) |
+| 🎵 Aadu Gajala | Pasted share text | `aadu-gajala.vercel.app` or `ఆడు గజాల ఆడు` | Its `#DD MON` date. `?date=` and "this song" replays are rejected. |
+| ⭐ Evarra? | Pasted share text | `ysai258.github.io/evarra` or `EVARRA?` | Its printed date, which is the player's local day. Multiplayer results are rejected. |
+| 👗 Pattukunte Pattucheera | Pasted share text | `pattukunte-pattucheera.netlify.app` or its title | The IST day that `Day N` stands for. "(Time Travelled)" is rejected. |
 
 - **Every parser checks the claimed score against the emoji grid.** This catches typos and casual edits. Evarra's points are also checked against its scoring rules.
 - **All results are stored with `source = 'share-text'`** and shown as self-reported.
@@ -42,7 +42,11 @@ Game sites (external, untouched) ──share text──▶ player's clipboard �
 
 ## Rules
 
-- **Day** = the IST calendar day of the paste (`Asia/Kolkata`, via Luxon). It never comes from the server's timezone or from UTC.
+- **Day:** a result is filed under the game's own date when its share text states one, otherwise under the IST day of the paste. Days are `Asia/Kolkata`, via Luxon, never the server's timezone or UTC.
+- **Only today's or yesterday's game (IST) is accepted.** Yesterday is needed for two reasons:
+  - Evarra's day starts at the *player's* midnight. For a friend in the US, India's midnight falls at about 2:30pm, so all evening their Evarra is still dated yesterday by India's calendar.
+  - A game played at 11:55pm IST and pasted at 12:05am belongs to the day before.
+- **A date ahead of India** (e.g. a friend in Australia just after their midnight) is refused with "add it after midnight IST".
 - **One result per player, per game, per day.**
   - The first paste wins. A different second paste gets `409` and the UI blocks it up front.
   - Re-sending the identical result is treated as a retry: `200`, and no new row.
@@ -157,7 +161,9 @@ Other commands: `npm test`, `npm run typecheck`, `npm run build`, `npm run check
 - **Results are self-reported.** Share text is plain text, so anyone can type a fake one. The grid check stops typos, not intent. The UI says this on every leaderboard.
 - **Absolute Cinema's share text has no date.** A replay of an old day through its Time Machine looks identical to today's result. The hub can only stamp it with the paste day.
 - **Identity is per browser.** A new phone or cleared site data means a new player. Anyone who learns a player id could post as that player. That's acceptable for friends, and this is not authentication.
-- **Evarra rolls over at the player's local midnight, not IST.** For a friend outside India, Evarra's "today" can differ from the hub's for part of the day, and their paste is then rejected as the wrong day.
+- **Evarra rolls over at the player's local midnight, not IST.** The hub files Evarra under its printed date and accepts yesterday's, so friends in the US are covered. A friend *east* of India has to wait until midnight IST to paste a result dated ahead of India.
+- **The yesterday window has a cost.** Someone who didn't add yesterday's game could replay yesterday's Evarra from its archive and paste it, because the text looks the same. Aadu Gajala and Pattukunte mark their replays, so those are still refused.
+- **Absolute Cinema has no date in its text**, so it always counts for the paste day. A US friend who plays it before 2:30pm and pastes after it gets it filed under India's next day.
 - **The parsers are tied to each game's current share format.** If a game changes its template, pastes fail with a clear "couldn't read" message until its parser in `src/shared/parse/` is updated. Each parser's header comment shows the expected format.
 - **There is no in-app admin control for renaming or disabling a game.** Change `src/shared/games.ts` and redeploy.
 

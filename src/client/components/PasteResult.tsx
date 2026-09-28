@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { addDays, formatDayMonth } from '@/shared/date';
 import { getGame, type GameId } from '@/shared/games';
 import { parseShareText } from '@/shared/parse';
 import { resultLabel } from '@/shared/scoring';
@@ -15,6 +16,11 @@ type Status =
   | { kind: 'saved'; result: ResultDto }
   | { kind: 'queued'; gameId: GameId }
   | { kind: 'error'; message: string };
+
+/** "yesterday, 27 Sep" — dated games can count for the day before (see parseShareText). */
+function dayName(date: string, today: string): string {
+  return date === addDays(today, -1) ? `yesterday, ${formatDayMonth(date)}` : formatDayMonth(date);
+}
 
 /**
  * Paste a game's share text → see what the hub read → save it.
@@ -47,7 +53,9 @@ export function PasteResult({
   const canReadClipboard = typeof navigator !== 'undefined' && typeof navigator.clipboard?.readText === 'function';
 
   const preview = useMemo(() => (text.trim() ? parseShareText(text, today) : null), [text, today]);
-  const alreadyRecorded = preview?.ok === true && recorded.has(preview.result.gameId);
+  // `recorded` is today's games. A result that counts for yesterday is checked by the server.
+  const alreadyRecorded =
+    preview?.ok === true && preview.result.gameDate === today && recorded.has(preview.result.gameId);
   const canSave = preview?.ok === true && !alreadyRecorded && status.kind !== 'saving';
 
   async function pasteFromClipboard() {
@@ -123,6 +131,7 @@ export function PasteResult({
         <p className={alreadyRecorded ? 'error-text' : 'detected'} role="status">
           {getGame(preview.result.gameId).icon} {getGame(preview.result.gameId).name} ·{' '}
           <strong>{resultLabel(preview.result)}</strong>
+          {preview.result.gameDate !== today && ` · counts for ${dayName(preview.result.gameDate, today)}`}
           {alreadyRecorded ? ' — already added today. Only the first result counts.' : ''}
         </p>
       )}
@@ -141,6 +150,7 @@ export function PasteResult({
       {status.kind === 'saved' && (
         <p className="success-text" role="status">
           ✓ {getGame(status.result.gameId).name} recorded: {status.result.label}
+          {status.result.gameDate !== today && ` (for ${dayName(status.result.gameDate, today)})`}
         </p>
       )}
       {status.kind === 'queued' && (

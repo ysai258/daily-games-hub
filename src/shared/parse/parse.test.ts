@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { istToday } from '../date';
 import { detectGame, parseShareText } from './index';
 
 // Share texts below are the games' real templates, reconstructed from their shipped
@@ -107,7 +108,7 @@ describe('detectGame', () => {
 
 describe('Absolute Cinema', () => {
   it('parses a win', () => {
-    expect(ok(AC_WIN)).toEqual({ gameId: 'absolute-cinema', won: true, attempts: 3, maxAttempts: 5, points: null });
+    expect(ok(AC_WIN)).toEqual({ gameId: 'absolute-cinema', won: true, attempts: 3, maxAttempts: 5, points: null, gameDate: DAY });
   });
 
   it('parses a loss', () => {
@@ -115,7 +116,7 @@ describe('Absolute Cinema', () => {
   });
 
   it('tolerates emoji variation selectors and CRLF line endings from other apps', () => {
-    const mangled = AC_WIN.replace(/⬜/g, '⬜️').replace(/\n/g, '\r\n');
+    const mangled = AC_WIN.replace(/⬜/g, '⬜\uFE0F').replace(/\n/g, '\r\n');
     expect(ok(mangled)).toMatchObject({ won: true, attempts: 3 });
   });
 
@@ -130,15 +131,21 @@ describe('Absolute Cinema', () => {
 
 describe('Aadu Gajala', () => {
   it('parses a win', () => {
-    expect(ok(AG_WIN)).toEqual({ gameId: 'aadu-gajala', won: true, attempts: 3, maxAttempts: 5, points: null });
+    expect(ok(AG_WIN)).toEqual({ gameId: 'aadu-gajala', won: true, attempts: 3, maxAttempts: 5, points: null, gameDate: DAY });
   });
 
   it('parses a loss', () => {
     expect(ok(AG_LOSS)).toMatchObject({ won: false, attempts: 5 });
   });
 
-  it('rejects a different day', () => {
-    expect(err(AG_WIN.replace('#26 SEP', '#25 SEP'))).toMatch(/25 Sep/);
+  it("files yesterday's song under yesterday, and refuses anything older", () => {
+    expect(ok(AG_WIN.replace('#26 SEP', '#25 SEP'))).toMatchObject({ gameDate: '2026-09-25' });
+    expect(err(AG_WIN.replace('#26 SEP', '#24 SEP'))).toMatch(/24 Sep.*today's or yesterday's/);
+  });
+
+  it('works out the year across New Year', () => {
+    const newYearsEve = AG_WIN.replace('#26 SEP', '#31 DEC');
+    expect(ok(newYearsEve, '2027-01-01')).toMatchObject({ gameDate: '2026-12-31' });
   });
 
   it('rejects a replay of a past day', () => {
@@ -156,14 +163,14 @@ describe('Aadu Gajala', () => {
 
 describe('Evarra', () => {
   it('parses a win with its native points', () => {
-    expect(ok(EV_WIN)).toEqual({ gameId: 'evarra', won: true, attempts: 2, maxAttempts: 5, points: 390 });
+    expect(ok(EV_WIN)).toEqual({ gameId: 'evarra', won: true, attempts: 2, maxAttempts: 5, points: 390, gameDate: DAY });
   });
 
   it('parses a loss', () => {
     expect(ok(EV_LOSS)).toMatchObject({ won: false, attempts: 5, points: 0 });
   });
 
-  it('rejects a different day', () => {
+  it('rejects a day that is too old', () => {
     expect(err(EV_WIN.replace('September 26, 2026', 'September 20, 2026'))).toMatch(/20 Sep/);
   });
 
@@ -185,7 +192,7 @@ describe('Pattukunte Pattucheera', () => {
       won: true,
       attempts: 3,
       maxAttempts: 5,
-      points: null,
+      points: null, gameDate: DAY
     });
   });
 
@@ -193,9 +200,10 @@ describe('Pattukunte Pattucheera', () => {
     expect(ok(PP_LOSS)).toMatchObject({ won: false, attempts: 5 });
   });
 
-  it("checks the day number against the hub's IST day", () => {
-    expect(ok(PP_WIN.replace('Day 1587', 'Day 1588'), '2026-09-27')).toMatchObject({ won: true });
-    expect(err(PP_WIN.replace('Day 1587', 'Day 1586'))).toMatch(/day 1586/i);
+  it('files the result under the day its number stands for', () => {
+    expect(ok(PP_WIN.replace('Day 1587', 'Day 1588'), '2026-09-27')).toMatchObject({ gameDate: '2026-09-27' });
+    expect(ok(PP_WIN.replace('Day 1587', 'Day 1586'))).toMatchObject({ gameDate: '2026-09-25' });
+    expect(err(PP_WIN.replace('Day 1587', 'Day 1585'))).toMatch(/24 Sep/);
   });
 
   it('rejects a time-travelled game', () => {
@@ -205,6 +213,32 @@ describe('Pattukunte Pattucheera', () => {
 
   it('rejects a score that disagrees with its squares', () => {
     expect(err(PP_WIN.replace(': 3/5', ': 2/5'))).toMatch(/doesn't match/i);
+  });
+});
+
+describe('friends outside India', () => {
+  // New York is 9½ hours behind IST: India's midnight is 2:30 pm there.
+  const istDayAt = (nyTime: string) => istToday(new Date(nyTime));
+
+  it("accepts Evarra all evening in the US, when the player's local date is behind India's", () => {
+    // 9 pm Sunday 27 Sep in New York = 6:30 am Monday 28 Sep IST. Evarra still shows the 27th.
+    const pasteDay = istDayAt('2026-09-27T21:00:00-04:00');
+    expect(pasteDay).toBe('2026-09-28');
+    const ev = EV_WIN.replace('September 26, 2026', 'September 27, 2026');
+    expect(ok(ev, pasteDay)).toMatchObject({ gameId: 'evarra', gameDate: '2026-09-27' });
+  });
+
+  it('accepts an IST-dated game played before India midnight and pasted after it', () => {
+    // Played 1 pm New York (10:30 pm IST, the 27th); pasted 3 pm (12:30 am IST, the 28th).
+    const pasteDay = istDayAt('2026-09-27T15:00:00-04:00');
+    expect(ok(AG_WIN.replace('#26 SEP', '#27 SEP'), pasteDay)).toMatchObject({ gameDate: '2026-09-27' });
+    expect(ok(PP_WIN.replace('Day 1587', 'Day 1588'), pasteDay)).toMatchObject({ gameDate: '2026-09-27' });
+  });
+
+  it("explains, rather than accepts, a date that hasn't started in India", () => {
+    // Someone east of India (Sydney) just past their midnight: Evarra shows the 27th, India is still on the 26th.
+    const ev = EV_WIN.replace('September 26, 2026', 'September 27, 2026');
+    expect(err(ev, '2026-09-26')).toMatch(/hasn't started in India/);
   });
 });
 

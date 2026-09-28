@@ -1,4 +1,4 @@
-import { daysBetween } from '../date';
+import { addDays, daysBetween } from '../date';
 import { MAX_ATTEMPTS, SCORE_MISMATCH, fail, rowMatchesScore, success, symbols, unreadable, type GameParser } from './common';
 
 /**
@@ -17,7 +17,7 @@ export function pattukunteDayNumber(gameDate: string): number {
   return daysBetween(DAY_ZERO, gameDate);
 }
 
-export const parsePattukunte: GameParser = (text, gameDate) => {
+export const parsePattukunte: GameParser = (text) => {
   const header = HEADER.exec(text);
   const row = text.split('\n').find((line) => ROW.test(line.replace(/\s+/g, '')));
   if (!header || !row) return fail('pattukunte-pattucheera', unreadable('Pattukunte Pattucheera'));
@@ -26,11 +26,7 @@ export const parsePattukunte: GameParser = (text, gameDate) => {
     return fail('pattukunte-pattucheera', "This is a time-travelled game from a past day. Only today's game counts.");
   }
 
-  const day = Number(header[1]);
-  const expected = pattukunteDayNumber(gameDate);
-  if (day !== expected) {
-    return fail('pattukunte-pattucheera', `This is Day ${day}, but today's game is Day ${expected}.`);
-  }
+  const ownDate = addDays(DAY_ZERO, Number(header[1]));
 
   const n = Number(header[3]);
   const won = n > 0;
@@ -38,5 +34,5 @@ export const parsePattukunte: GameParser = (text, gameDate) => {
   if (!rowMatchesScore(symbols(row), { won, attempts }, { hit: '🟩', miss: ['🟥'], unused: '⬛' })) {
     return fail('pattukunte-pattucheera', SCORE_MISMATCH);
   }
-  return success({ gameId: 'pattukunte-pattucheera', won, attempts, maxAttempts: MAX_ATTEMPTS, points: null });
+  return success({ gameId: 'pattukunte-pattucheera', won, attempts, maxAttempts: MAX_ATTEMPTS, points: null, ownDate });
 };

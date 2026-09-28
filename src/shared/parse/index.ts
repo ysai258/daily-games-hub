@@ -1,3 +1,4 @@
+import { addDays, formatDayMonth } from '../date';
 import { GAMES, type GameId } from '../games';
 import { parseAaduGajala } from './aadu-gajala';
 import { parseAbsoluteCinema } from './absolute-cinema';
@@ -46,11 +47,16 @@ export function detectGame(rawText: string): DetectOutcome {
 }
 
 /**
- * Turns a pasted share text into a result for `gameDate` (the hub's IST day).
- * Runs on both sides: the browser for an instant preview, the server as the check
- * that counts.
+ * Turns a pasted share text into a result. Runs on both sides: the browser for an
+ * instant preview, the server as the check that counts.
+ *
+ * The result is filed under the game's own date when its text has one, else under
+ * `pasteDate` (the IST day of the paste). Only today's or yesterday's game (IST) is
+ * accepted. Yesterday is needed because days don't line up: a friend in the US is
+ * still playing the 27th's Evarra after India has moved on to the 28th, and anyone
+ * who finishes at 11:55 pm IST and pastes at 12:05 am is a day behind the hub.
  */
-export function parseShareText(rawText: string, gameDate: string): ParseOutcome {
+export function parseShareText(rawText: string, pasteDate: string): ParseOutcome {
   if (rawText.trim() === '') return { ok: false, error: "Paste your game's share text first." };
   if (rawText.length > MAX_SHARE_TEXT_LENGTH) {
     return { ok: false, error: 'That text is too long to be a game result.' };
@@ -58,5 +64,25 @@ export function parseShareText(rawText: string, gameDate: string): ParseOutcome 
 
   const detected = detectGame(rawText);
   if (!detected.ok) return detected;
-  return PARSERS[detected.gameId](normalizeShareText(rawText), gameDate);
+  const parsed = PARSERS[detected.gameId](normalizeShareText(rawText), pasteDate);
+  if (!parsed.ok) return parsed;
+
+  const { ownDate, ...rest } = parsed.result;
+  const gameDate = ownDate ?? pasteDate;
+  const gameId = detected.gameId;
+  if (gameDate > pasteDate) {
+    return {
+      ok: false,
+      gameId,
+      error: `This result is for ${formatDayMonth(gameDate)}, which hasn't started in India yet. Add it after midnight IST.`,
+    };
+  }
+  if (gameDate < addDays(pasteDate, -1)) {
+    return {
+      ok: false,
+      gameId,
+      error: `This result is for ${formatDayMonth(gameDate)}. Only today's or yesterday's game can be added.`,
+    };
+  }
+  return { ok: true, result: { ...rest, gameDate } };
 }

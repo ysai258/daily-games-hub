@@ -90,7 +90,26 @@ describe('submitResult', () => {
 
   it('rejects unparseable or wrong-day text with the reason', async () => {
     const outcome = await submitResult(db, { playerId: RAHUL, playerName: 'Rahul', text: pp(3, 1500) }, NOW);
-    expect(outcome).toMatchObject({ status: 422, error: expect.stringMatching(/Day 1500/) });
+    expect(outcome).toMatchObject({ status: 422, error: expect.stringMatching(/today's or yesterday's/) });
+  });
+
+  it("files a dated game under the game's own day, even when pasted after India's midnight", async () => {
+    // A US friend: played Pattukunte Day 1586 (25 Sep) and pasted at 00:30 IST on the 26th.
+    const justAfterMidnight = new Date('2026-09-26T00:30:00+05:30');
+    const outcome = await submitResult(db, { playerId: RAHUL, playerName: 'Rahul', text: pp(3, 1586) }, justAfterMidnight);
+    expect(outcome).toMatchObject({ status: 201, result: { gameDate: '2026-09-25' } });
+    // …and it blocks a second paste of that same day's game, naming the day.
+    const again = await submitResult(db, { playerId: RAHUL, playerName: 'Rahul', text: pp(1, 1586) }, NOW);
+    expect(again).toMatchObject({ status: 409, error: expect.stringMatching(/for 25 Sep/) });
+  });
+
+  it("doesn't let a queued paste from yesterday reach back two days", async () => {
+    const outcome = await submitResult(
+      db,
+      { playerId: RAHUL, playerName: 'Rahul', text: pp(3, 1585), gameDate: '2026-09-25' },
+      NOW,
+    );
+    expect(outcome).toMatchObject({ status: 422 });
   });
 
   it('updates the display name on every submission and on rename', async () => {
