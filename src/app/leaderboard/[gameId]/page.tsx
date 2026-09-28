@@ -7,6 +7,7 @@ import { ENABLED_GAMES, getGame, isGameId } from '@/shared/games';
 import { api } from '@/client/api';
 import { DateNav, useSelectedDate } from '@/client/components/DateNav';
 import { PlayLink } from '@/client/components/GameCard';
+import { AllTimeGameBoard } from '@/client/components/AllTimeBoards';
 import { GameBoard } from '@/client/components/Leaderboards';
 import { useApi, useIstClock, usePlayer } from '@/client/hooks';
 
@@ -15,6 +16,8 @@ function GameLeaderboard({ gameId }: { gameId: Parameters<typeof getGame>[0] }) 
   const { today } = useIstClock();
   const date = useSelectedDate(today);
   const board = useApi(() => api.gameLeaderboard(gameId, date), [gameId, date]);
+  const allTime = useApi(() => api.allTime(), []);
+  const allTimeGame = allTime.data?.games.find((g) => g.gameId === gameId);
   const results = board.data?.date === date ? board.data.results : null;
   const game = getGame(gameId);
 
@@ -36,6 +39,18 @@ function GameLeaderboard({ gameId }: { gameId: Parameters<typeof getGame>[0] }) 
         <GameBoard gameId={gameId} results={results} meId={player.id} linkTitle={false} />
       ) : (
         !board.error && <p className="muted">Loading…</p>
+      )}
+      {allTimeGame && (
+        <>
+          <h2 className="title title--sub">All time</h2>
+          <AllTimeGameBoard
+            gameId={gameId}
+            entries={allTimeGame.entries}
+            usesNativePoints={allTimeGame.usesNativePoints}
+            meId={player.id}
+            linkTitle={false}
+          />
+        </>
       )}
       <PlayLink game={game} />
     </div>

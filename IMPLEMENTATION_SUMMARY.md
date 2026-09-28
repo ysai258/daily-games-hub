@@ -75,6 +75,14 @@ Game's Share button ─▶ Android share sheet ─▶ "Daily Games"
 - **Where the text travels:** in the URL fragment, which is never sent to the server or logged. It is removed from the address bar as soon as it has been read.
 - **Where it works:** the share target works only in the **installed** app on Android (Chrome, and Chromium browsers such as Samsung Internet) and on ChromeOS. iPhone Safari does not support Web Share Target, so iPhone users keep copy and paste. That flow is unchanged.
 
+## All-time leaderboards
+
+- **Ranking:** by **total points**, so playing every day counts as well as solving early. An average would let one lucky game top the board forever.
+- **Points per result:** 100 for a first-try solve, 20 fewer for each extra try, 0 for a miss. This is the same rule as the daily score.
+- **Overall board:** sums those points across all four games. It also shows days played, games played and solve rate. Ties go to more solves, then to fewer games played.
+- **Per-game boards:** the same totals per game, with solves and average tries per solve. Evarra ranks on its own points (500 scale, clues cost points), as its daily board does. That's set by `hasNativePoints` in `src/shared/games.ts`.
+- **How it's computed:** the database adds up per player and game (`getAllTimeLeaderboard` in `src/server/leaderboard.ts`). Deleted results and renamed players are reflected immediately.
+
 ## Database schema (`drizzle/0000_init.sql`)
 
 - **`players`**: `id uuid pk`, `name`, `created_at`, `updated_at`
@@ -94,6 +102,7 @@ Game's Share button ─▶ Android share sheet ─▶ "Daily Games"
 | POST | `/api/results` | `{playerId, playerName, text, gameDate?}` → 201 saved, 200 duplicate, 409 already recorded, 422 unreadable or wrong day, 429 rate-limited |
 | GET | `/api/leaderboard?date=` | Friends standings plus a board per game |
 | GET | `/api/leaderboard/:gameId?date=` | One game's board |
+| GET | `/api/leaderboard/all-time` | Every result ever, added up: overall standings plus a board per game |
 | GET | `/api/player/:playerId?date=` | One player's results for a day |
 | PUT | `/api/player/:playerId` | Rename `{name}` |
 | GET | `/api/player/:playerId/history` | The last 60 days, grouped by day |
@@ -111,7 +120,7 @@ Validation:
 ## Pages
 
 `/` today's dashboard · `/games/:gameId` · `/leaderboard` (with previous and next day) ·
-`/leaderboard/:gameId` · `/history` · `/settings` (rename, add to home screen) · `/admin`
+`/leaderboard/:gameId` (today and all time) · `/leaderboard/all-time` · `/history` · `/settings` (rename, add to home screen) · `/admin`
 
 ## Local setup
 

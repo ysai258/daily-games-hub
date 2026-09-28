@@ -17,6 +17,11 @@ export type GameConfig = {
   enabled: boolean;
   integrationType: IntegrationType;
   maxAttempts: number;
+  /**
+   * True when the game scores in its own points (Evarra's 500-point scale). Its
+   * leaderboards then rank on those; the overall board always uses hub points.
+   */
+  hasNativePoints: boolean;
   /** Hostnames (and optional path prefix) that identify this game's share text. */
   shareUrlMarkers: readonly string[];
 };
@@ -35,6 +40,7 @@ export const GAMES: readonly GameConfig[] = [
     enabled: true,
     integrationType: 'external',
     maxAttempts: 5,
+    hasNativePoints: false,
     shareUrlMarkers: ['absolute-cinema.in'],
   },
   {
@@ -47,6 +53,7 @@ export const GAMES: readonly GameConfig[] = [
     enabled: true,
     integrationType: 'external',
     maxAttempts: 5,
+    hasNativePoints: false,
     shareUrlMarkers: ['aadu-gajala.vercel.app'],
   },
   {
@@ -59,6 +66,7 @@ export const GAMES: readonly GameConfig[] = [
     enabled: true,
     integrationType: 'external',
     maxAttempts: 5,
+    hasNativePoints: true,
     shareUrlMarkers: ['ysai258.github.io/evarra'],
   },
   {
@@ -71,6 +79,7 @@ export const GAMES: readonly GameConfig[] = [
     enabled: true,
     integrationType: 'external',
     maxAttempts: 5,
+    hasNativePoints: false,
     shareUrlMarkers: ['pattukunte-pattucheera.netlify.app'],
   },
 ];

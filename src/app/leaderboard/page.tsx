@@ -3,6 +3,7 @@
 import { Suspense } from 'react';
 import { api } from '@/client/api';
 import { DateNav, useSelectedDate } from '@/client/components/DateNav';
+import { LeaderboardTabs } from '@/client/components/AllTimeBoards';
 import { Disclaimer } from '@/client/components/Disclaimer';
 import { GameBoard, StandingsTable } from '@/client/components/Leaderboards';
 import { useApi, useIstClock, usePlayer } from '@/client/hooks';
@@ -17,6 +18,7 @@ function Leaderboard() {
   return (
     <div className="stack-lg">
       <h1 className="title">🏆 Leaderboard</h1>
+      <LeaderboardTabs active="today" />
       <DateNav date={date} today={today} basePath="/leaderboard" />
       {board.error && !data && (
         <p className="error-text card" role="alert">

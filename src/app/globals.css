@@ -348,6 +348,36 @@ a:focus-visible {
   width: fit-content;
 }
 
+.tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+
+.tabs__tab {
+  flex: 1 1 0;
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  font-weight: 700;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.tabs__tab[aria-current='page'] {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.08);
+}
+
+.title--sub {
+  font-size: 20px;
+}
+
 .date-nav {
   display: flex;
   align-items: center;
@@ -435,6 +465,10 @@ a:focus-visible {
   max-width: 120px;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.table__name .block {
+  font-weight: 400;
 }
 
 .num {

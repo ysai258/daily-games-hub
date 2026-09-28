@@ -1,5 +1,5 @@
 import type { GameConfig } from '@/shared/games';
-import type { DayLeaderboard, PlayerDay, RankedResult, ResultDto } from '@/shared/types';
+import type { AllTimeLeaderboard, DayLeaderboard, PlayerDay, RankedResult, ResultDto } from '@/shared/types';
 
 export type ApiResult<T> =
   | { ok: true; status: number; data: T }
@@ -27,6 +27,7 @@ export type SubmitResponse = { result: ResultDto; duplicate?: boolean };
 export const api = {
   today: () => request<{ date: string; now: string; nextResetAt: string }>('/api/today'),
   games: () => request<{ games: GameConfig[] }>('/api/games'),
+  allTime: () => request<AllTimeLeaderboard>('/api/leaderboard/all-time'),
   leaderboard: (date?: string) => request<DayLeaderboard>(`/api/leaderboard${date ? `?date=${date}` : ''}`),
   gameLeaderboard: (gameId: string, date?: string) =>
     request<{ date: string; gameId: string; results: RankedResult[] }>(
